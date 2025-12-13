@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getLeaderboard, addScore, updateScore } from '@/lib/database';
+import { getLeaderboard, updateScore } from '@/lib/database';
 
 export async function GET() {
   try {
