@@ -21,12 +21,6 @@ interface User {
   completedGames: string[];
 }
 
-interface Score {
-  playerName: string;
-  score: number;
-  completedGames: number;
-}
-
 export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
   const [users, setUsers] = useState<User[]>([]);
