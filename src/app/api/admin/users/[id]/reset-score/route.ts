@@ -5,7 +5,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
     // In production, implement actual delete
     return NextResponse.json({ success: true });
   } catch (error) {
