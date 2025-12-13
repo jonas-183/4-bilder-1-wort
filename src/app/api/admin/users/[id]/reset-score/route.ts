@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getUserById } from '@/lib/database';
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
