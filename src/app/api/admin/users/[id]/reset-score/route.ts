@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE() {
   try {
     // In production, implement actual delete
     return NextResponse.json({ success: true });

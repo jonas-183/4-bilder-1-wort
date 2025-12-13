@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getUserById } from '@/lib/database';
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE() {
   try {
-    const id = params.id;
     // In production, implement actual delete
     // For now, just return success
     return NextResponse.json({ success: true });
