@@ -98,17 +98,9 @@ export default function Home() {
   const handleCorrectAnswer = async () => {
     if (!currentUser) return;
 
-    const game = games[currentGameIndex];
+    const unplayedGames = games.filter(g => !currentUser.completedGames.includes(g.id));
+    const game = unplayedGames[currentGameIndex];
     if (!game) return;
-
-    // Überprüfe ob Rätsel bereits gelöst
-    if (currentUser.completedGames.includes(game.id)) {
-      alert('Dieses Rätsel hast du bereits gelöst!');
-      if (currentGameIndex < games.length - 1) {
-        setCurrentGameIndex(currentGameIndex + 1);
-      }
-      return;
-    }
 
     const points = pointsConfig[game.difficulty];
 
@@ -122,7 +114,7 @@ export default function Home() {
 
       setCurrentUser(updatedUser);
 
-      if (currentGameIndex < games.length - 1) {
+      if (currentGameIndex < unplayedGames.length - 1) {
         setCurrentGameIndex(currentGameIndex + 1);
       } else {
         // Spiel vorbei
@@ -206,6 +198,30 @@ export default function Home() {
   }
 
   // Spiel läuft
+  const unplayedGames = games.filter(g => !currentUser.completedGames.includes(g.id));
+  const currentGame = unplayedGames[currentGameIndex];
+
+  if (unplayedGames.length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl font-bold text-primary mb-4">🎉 Glückwunsch!</div>
+          <div className="text-2xl text-black mb-4">Du hast alle Rätsel gelöst!</div>
+          <div className="text-xl text-primary mb-8">Punkte: {currentUser.score}</div>
+          <button
+            onClick={() => {
+              setCurrentUser(null);
+              fetchUsers();
+            }}
+            className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
+          >
+            Zurück zum Menü
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white p-4 flex flex-col items-center justify-center">
       {/* Game Header */}
@@ -218,7 +234,7 @@ export default function Home() {
             Punkte: <span className="text-xl">{currentUser.score}</span>
           </div>
           <div className="text-white font-bold">
-            Rätsel: <span className="text-xl">{currentGameIndex + 1}/{games.length}</span>
+            Rätsel: <span className="text-xl">{currentGameIndex + 1}/{unplayedGames.length}</span>
           </div>
         </div>
 
@@ -227,17 +243,17 @@ export default function Home() {
           <div
             className="bg-primary h-full transition-all duration-300"
             style={{
-              width: `${((currentGameIndex + 1) / games.length) * 100}%`,
+              width: `${((currentGameIndex + 1) / unplayedGames.length) * 100}%`,
             }}
           />
         </div>
       </div>
 
       {/* Game Grid */}
-      {games[currentGameIndex] && (
+      {currentGame && (
         <GameImageGrid
-          images={games[currentGameIndex].images}
-          answer={games[currentGameIndex].answer}
+          images={currentGame.images}
+          answer={currentGame.answer}
           onAnswerSubmit={handleCorrectAnswer}
         />
       )}
