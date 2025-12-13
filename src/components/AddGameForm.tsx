@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 
 interface AddGameFormProps {
   onSubmit: (data: {
@@ -91,10 +92,11 @@ export default function AddGameForm({ onSubmit }: AddGameFormProps) {
               />
               {img && (
                 <div className="mt-2 relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100 border border-primary">
-                  <img
+                  <Image
                     src={img}
                     alt={`Preview ${index + 1}`}
                     className="w-full h-full object-cover"
+                    fill
                     onError={(e) => {
                       const img = e.currentTarget as HTMLImageElement;
                       img.style.display = 'none';

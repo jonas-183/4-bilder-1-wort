@@ -13,7 +13,7 @@ export async function DELETE() {
 }
 
 export async function PUT(
-  request: Request,
+  _request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
