@@ -202,6 +202,14 @@ export async function getAllUsers(): Promise<User[]> {
   return userDatabase.sort((a, b) => b.score - a.score);
 }
 
+// Update a user's fields (score, completedGames, etc.)
+export async function updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+  const user = userDatabase.find((u) => u.id === id);
+  if (!user) return null;
+  Object.assign(user, updates);
+  return user;
+}
+
 // ===== GAME MANAGEMENT =====
 export async function updateGame(id: string, updates: Partial<GameData>): Promise<GameData | null> {
   const game = gameDatabase.find((g) => g.id === id);

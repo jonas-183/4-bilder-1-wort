@@ -112,6 +112,31 @@ export default function Home() {
         score: currentUser.score + points,
       };
 
+      // Persist user progress to backend
+      try {
+        await fetch(`/api/users/${currentUser.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            completedGames: updatedUser.completedGames,
+            score: updatedUser.score,
+          }),
+        });
+
+        // Update leaderboard (incremental)
+        await fetch('/api/scores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: currentUser.username,
+            score: points,
+            completedGames: 1,
+          }),
+        });
+      } catch (e) {
+        console.error('Fehler beim Persistieren:', e);
+      }
+
       setCurrentUser(updatedUser);
 
       if (currentGameIndex < unplayedGames.length - 1) {
@@ -261,10 +286,25 @@ export default function Home() {
       {/* End Game Button */}
       <div className="mt-8">
         <button
-          onClick={() => {
-            setCurrentUser(null);
-            fetchUsers();
-          }}
+              onClick={async () => {
+                // save progress before leaving
+                if (currentUser) {
+                  try {
+                    await fetch(`/api/users/${currentUser.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        completedGames: currentUser.completedGames,
+                        score: currentUser.score,
+                      }),
+                    });
+                  } catch (e) {
+                    console.error('Fehler beim Speichern vor Verlassen:', e);
+                  }
+                }
+                setCurrentUser(null);
+                fetchUsers();
+              }}
           className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
         >
           Spiel beendet
