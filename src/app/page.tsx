@@ -3,36 +3,31 @@
 import { useState, useEffect } from 'react';
 import GameImageGrid from '@/components/GameImageGrid';
 import Leaderboard from '@/components/Leaderboard';
-import AuthForm from '@/components/AuthForm';
 import Link from 'next/link';
 
 interface Game {
   id: string;
   images: string[];
   answer: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
-}
-
-interface User {
-  id: string;
-  username: string;
-  score: number;
-  completedGames: string[];
+  // difficulty/category kept in DB but not shown in anonymous play
+  difficulty?: 'easy' | 'medium' | 'hard';
+  category?: string;
 }
 
 export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [scores, setScores] = useState<any[]>([]);
+  const [playerName, setPlayerName] = useState('');
+  const [playerStarted, setPlayerStarted] = useState(false);
+  const [playerScore, setPlayerScore] = useState(0);
+  const [localCompleted, setLocalCompleted] = useState<string[]>([]);
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isLoginMode, setIsLoginMode] = useState(true);
   const [pointsConfig, setPointsConfig] = useState({ easy: 10, medium: 25, hard: 50 });
 
   useEffect(() => {
     fetchGames();
-    fetchUsers();
+    fetchLeaderboard();
     fetchPointsConfig();
   }, []);
 
@@ -48,16 +43,6 @@ export default function Home() {
     }
   };
 
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      const data = await response.json();
-      setUsers(data);
-    } catch (error) {
-      console.error('Fehler beim Laden der Spieler:', error);
-    }
-  };
-
   const fetchPointsConfig = async () => {
     try {
       const response = await fetch('/api/admin/points');
@@ -68,84 +53,77 @@ export default function Home() {
     }
   };
 
-  const handleAuth = async (username: string, password: string, email?: string) => {
+  const fetchLeaderboard = async () => {
     try {
-      const response = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: isLoginMode ? 'login' : 'register',
-          username,
-          password,
-          email,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error);
-      }
-
-      const user = await response.json();
-      setCurrentUser(user);
-      setCurrentGameIndex(0);
-      fetchUsers();
+      const response = await fetch('/api/scores');
+      const data = await response.json();
+      setScores(data);
     } catch (error) {
-      throw error;
+      console.error('Fehler beim Laden des Leaderboards:', error);
+    }
+  };
+
+  const startGame = (name: string) => {
+    if (!name || !name.trim()) {
+      alert('Bitte Namen eingeben');
+      return;
+    }
+    const trimmed = name.trim();
+    setPlayerName(trimmed);
+    setPlayerStarted(true);
+    setCurrentGameIndex(0);
+    setPlayerScore(0);
+    // load completed from localStorage by name
+    try {
+      const key = `completed_${trimmed}`;
+      const raw = localStorage.getItem(key);
+      const done = raw ? JSON.parse(raw) : [];
+      setLocalCompleted(Array.isArray(done) ? done : []);
+    } catch (e) {
+      setLocalCompleted([]);
     }
   };
 
   const handleCorrectAnswer = async () => {
-    if (!currentUser) return;
+    if (!playerStarted) return;
 
-    const unplayedGames = games.filter(g => !currentUser.completedGames.includes(g.id));
+    const unplayedGames = games.filter((g) => !localCompleted.includes(g.id));
     const game = unplayedGames[currentGameIndex];
     if (!game) return;
 
-    const points = pointsConfig[game.difficulty];
+    const difficulty: 'easy' | 'medium' | 'hard' = (game as any).difficulty || 'easy';
+    const points = pointsConfig[difficulty];
 
     try {
-      // Speichere completed game
-      const updatedUser = {
-        ...currentUser,
-        completedGames: [...currentUser.completedGames, game.id],
-        score: currentUser.score + points,
-      };
-
-      // Persist user progress to backend
+      const updatedDone = [...localCompleted, game.id];
+      setLocalCompleted(updatedDone);
+      // persist locally
       try {
-        await fetch(`/api/users/${currentUser.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            completedGames: updatedUser.completedGames,
-            score: updatedUser.score,
-          }),
-        });
+        const key = `completed_${playerName}`;
+        localStorage.setItem(key, JSON.stringify(updatedDone));
+      } catch (e) {
+        console.error('LocalStorage error:', e);
+      }
 
-        // Update leaderboard (incremental)
+      // update local score and leaderboard
+      setPlayerScore((s) => s + points);
+      try {
         await fetch('/api/scores', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            playerName: currentUser.username,
-            score: points,
-            completedGames: 1,
-          }),
+          body: JSON.stringify({ playerName, score: points, completedGames: 1 }),
         });
+        // refresh leaderboard
+        fetchLeaderboard();
       } catch (e) {
-        console.error('Fehler beim Persistieren:', e);
+        console.error('Fehler beim Aktualisieren des Leaderboards:', e);
       }
-
-      setCurrentUser(updatedUser);
 
       if (currentGameIndex < unplayedGames.length - 1) {
         setCurrentGameIndex(currentGameIndex + 1);
       } else {
-        // Spiel vorbei
-        alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${updatedUser.score}`);
-        setCurrentUser(null);
-        fetchUsers();
+        alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${playerScore + points}`);
+        setPlayerStarted(false);
       }
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
@@ -169,10 +147,7 @@ export default function Home() {
         <div className="text-center">
           <div className="text-4xl font-bold text-primary mb-4">4 Bilder 1 Wort</div>
           <div className="text-black mb-4">Noch keine Rätsel vorhanden!</div>
-          <Link
-            href="/admin"
-            className="inline-block px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
-          >
+          <Link href="/admin" className="inline-block px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition">
             Zur Admin-Seite
           </Link>
         </div>
@@ -180,7 +155,7 @@ export default function Home() {
     );
   }
 
-  if (!currentUser) {
+  if (!playerStarted) {
     return (
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-4xl mx-auto">
@@ -190,30 +165,37 @@ export default function Home() {
             <p className="text-black text-lg">Erkenne das Wort anhand der 4 Bilder!</p>
           </div>
 
-          {/* Auth Form */}
-          <AuthForm
-            isLogin={isLoginMode}
-            onToggle={() => setIsLoginMode(!isLoginMode)}
-            onSubmit={handleAuth}
-          />
+          {/* Simple name input */}
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8 border-4 border-primary max-w-md mx-auto">
+            <h2 className="text-2xl font-bold text-primary mb-4">Spiel starten</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                startGame(playerName);
+              }}
+            >
+              <input
+                type="text"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Gib deinen Namen ein"
+                className="w-full px-4 py-3 border-2 border-primary rounded-lg text-black placeholder-gray-500 focus:outline-none focus:border-primary-dark mb-4"
+                autoFocus
+              />
+              <button type="submit" className="w-full px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition text-lg">
+                Spiel starten
+              </button>
+            </form>
+          </div>
 
           {/* Leaderboard */}
           <div className="mt-12">
-            <Leaderboard
-              scores={users.map((u) => ({
-                playerName: u.username,
-                score: u.score,
-                completedGames: u.completedGames.length,
-              }))}
-            />
+            <Leaderboard scores={scores} />
           </div>
 
           {/* Admin Link */}
           <div className="text-center mt-8">
-            <Link
-              href="/admin"
-              className="inline-block px-6 py-2 text-primary hover:text-primary-dark font-semibold underline"
-            >
+            <Link href="/admin" className="inline-block px-6 py-2 text-primary hover:text-primary-dark font-semibold underline">
               Admin-Panel →
             </Link>
           </div>
@@ -223,7 +205,7 @@ export default function Home() {
   }
 
   // Spiel läuft
-  const unplayedGames = games.filter(g => !currentUser.completedGames.includes(g.id));
+  const unplayedGames = games.filter((g) => !localCompleted.includes(g.id));
   const currentGame = unplayedGames[currentGameIndex];
 
   if (unplayedGames.length === 0) {
@@ -232,11 +214,11 @@ export default function Home() {
         <div className="text-center">
           <div className="text-4xl font-bold text-primary mb-4">🎉 Glückwunsch!</div>
           <div className="text-2xl text-black mb-4">Du hast alle Rätsel gelöst!</div>
-          <div className="text-xl text-primary mb-8">Punkte: {currentUser.score}</div>
+          <div className="text-xl text-primary mb-8">Punkte: {playerScore}</div>
           <button
             onClick={() => {
-              setCurrentUser(null);
-              fetchUsers();
+              setPlayerStarted(false);
+              fetchLeaderboard();
             }}
             className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
           >
@@ -253,10 +235,10 @@ export default function Home() {
       <div className="w-full max-w-2xl mb-6">
         <div className="flex justify-between items-center bg-primary p-4 rounded-lg">
           <div className="text-white font-bold">
-            Spieler: <span className="text-xl">{currentUser.username}</span>
+            Spieler: <span className="text-xl">{playerName}</span>
           </div>
           <div className="text-white font-bold">
-            Punkte: <span className="text-xl">{currentUser.score}</span>
+            Punkte: <span className="text-xl">{playerScore}</span>
           </div>
           <div className="text-white font-bold">
             Rätsel: <span className="text-xl">{currentGameIndex + 1}/{unplayedGames.length}</span>
@@ -265,46 +247,29 @@ export default function Home() {
 
         {/* Progress Bar */}
         <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div
-            className="bg-primary h-full transition-all duration-300"
-            style={{
-              width: `${((currentGameIndex + 1) / unplayedGames.length) * 100}%`,
-            }}
-          />
+          <div className="bg-primary h-full transition-all duration-300" style={{ width: `${((currentGameIndex + 1) / unplayedGames.length) * 100}%` }} />
         </div>
       </div>
 
       {/* Game Grid */}
       {currentGame && (
-        <GameImageGrid
-          images={currentGame.images}
-          answer={currentGame.answer}
-          onAnswerSubmit={handleCorrectAnswer}
-        />
+        <GameImageGrid images={currentGame.images} answer={currentGame.answer} onAnswerSubmit={handleCorrectAnswer} />
       )}
 
       {/* End Game Button */}
       <div className="mt-8">
         <button
-              onClick={async () => {
-                // save progress before leaving
-                if (currentUser) {
-                  try {
-                    await fetch(`/api/users/${currentUser.id}`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        completedGames: currentUser.completedGames,
-                        score: currentUser.score,
-                      }),
-                    });
-                  } catch (e) {
-                    console.error('Fehler beim Speichern vor Verlassen:', e);
-                  }
-                }
-                setCurrentUser(null);
-                fetchUsers();
-              }}
+          onClick={async () => {
+            // save progress before leaving
+            try {
+              const key = `completed_${playerName}`;
+              localStorage.setItem(key, JSON.stringify(localCompleted));
+            } catch (e) {
+              console.error('Fehler beim Speichern vor Verlassen:', e);
+            }
+            setPlayerStarted(false);
+            fetchLeaderboard();
+          }}
           className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
         >
           Spiel beendet
