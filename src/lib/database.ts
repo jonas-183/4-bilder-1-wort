@@ -17,6 +17,22 @@ export interface Score {
   timestamp: number;
 }
 
+export interface User {
+  id: string;
+  username: string;
+  password: string; // In production: hash this!
+  email: string;
+  score: number;
+  completedGames: string[]; // Array of game IDs completed
+  createdAt: string;
+}
+
+export interface PointsConfig {
+  easy: number;
+  medium: number;
+  hard: number;
+}
+
 // Mock data - Replace with database calls in production
 const gameDatabase: GameData[] = [
   {
@@ -57,7 +73,15 @@ const gameDatabase: GameData[] = [
   },
 ];
 
+const userDatabase: User[] = [];
 const scoreDatabase: Score[] = [];
+
+// Points configuration per difficulty
+let pointsConfig: PointsConfig = {
+  easy: 10,
+  medium: 25,
+  hard: 50,
+};
 
 export async function getGameData(): Promise<GameData[]> {
   return gameDatabase;
@@ -111,4 +135,113 @@ export async function updateScore(
     return existingScore;
   }
   return addScore(playerName, score, completedGames);
+}
+
+// ===== USER MANAGEMENT =====
+export async function registerUser(
+  username: string,
+  password: string,
+  email: string
+): Promise<User | null> {
+  // Check if user already exists
+  if (userDatabase.find((u) => u.username === username)) {
+    return null;
+  }
+
+  const newUser: User = {
+    id: Date.now().toString(),
+    username,
+    password, // In production: hash this!
+    email,
+    score: 0,
+    completedGames: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  userDatabase.push(newUser);
+  return newUser;
+}
+
+export async function loginUser(
+  username: string,
+  password: string
+): Promise<User | null> {
+  const user = userDatabase.find(
+    (u) => u.username === username && u.password === password
+  );
+  return user || null;
+}
+
+export async function getUserById(id: string): Promise<User | undefined> {
+  return userDatabase.find((u) => u.id === id);
+}
+
+export async function getUserByUsername(username: string): Promise<User | undefined> {
+  return userDatabase.find((u) => u.username === username);
+}
+
+export async function completeGame(
+  userId: string,
+  gameId: string,
+  points: number
+): Promise<User | null> {
+  const user = userDatabase.find((u) => u.id === userId);
+  if (!user) return null;
+
+  // Check if already completed
+  if (user.completedGames.includes(gameId)) {
+    return null; // Already completed
+  }
+
+  user.completedGames.push(gameId);
+  user.score += points;
+  return user;
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  return userDatabase.sort((a, b) => b.score - a.score);
+}
+
+// ===== GAME MANAGEMENT =====
+export async function updateGame(id: string, updates: Partial<GameData>): Promise<GameData | null> {
+  const game = gameDatabase.find((g) => g.id === id);
+  if (!game) return null;
+
+  Object.assign(game, updates);
+  return game;
+}
+
+export async function deleteGame(id: string): Promise<boolean> {
+  const index = gameDatabase.findIndex((g) => g.id === id);
+  if (index === -1) return false;
+
+  gameDatabase.splice(index, 1);
+  return true;
+}
+
+// ===== SCORE MANAGEMENT =====
+export async function updateScoreEntry(id: string, updates: Partial<Score>): Promise<Score | null> {
+  const score = scoreDatabase.find((s) => s.id === id);
+  if (!score) return null;
+
+  Object.assign(score, updates);
+  return score;
+}
+
+export async function deleteScore(id: string): Promise<boolean> {
+  const index = scoreDatabase.findIndex((s) => s.id === id);
+  if (index === -1) return false;
+
+  scoreDatabase.splice(index, 1);
+  return true;
+}
+
+// ===== POINTS CONFIGURATION =====
+export async function getPointsConfig(): Promise<PointsConfig> {
+  return pointsConfig;
+}
+
+export async function updatePointsConfig(config: Partial<PointsConfig>): Promise<PointsConfig> {
+  pointsConfig = { ...pointsConfig, ...config };
+  return pointsConfig;
 }

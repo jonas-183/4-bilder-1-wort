@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import GameImageGrid from '@/components/GameImageGrid';
 import Leaderboard from '@/components/Leaderboard';
+import AuthForm from '@/components/AuthForm';
 import Link from 'next/link';
 
 interface Game {
@@ -13,6 +14,13 @@ interface Game {
   category: string;
 }
 
+interface User {
+  id: string;
+  username: string;
+  score: number;
+  completedGames: string[];
+}
+
 interface Score {
   playerName: string;
   score: number;
@@ -21,16 +29,18 @@ interface Score {
 
 export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
-  const [scores, setScores] = useState<Score[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
-  const [playerName, setPlayerName] = useState('');
-  const [playerScore, setPlayerScore] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isLoginMode, setIsLoginMode] = useState(true);
+  const [pointsConfig, setPointsConfig] = useState({ easy: 10, medium: 25, hard: 50 });
 
   useEffect(() => {
     fetchGames();
-    fetchLeaderboard();
+    fetchUsers();
+    fetchPointsConfig();
   }, []);
 
   const fetchGames = async () => {
@@ -45,52 +55,91 @@ export default function Home() {
     }
   };
 
-  const fetchLeaderboard = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/scores');
+      const response = await fetch('/api/admin/users');
       const data = await response.json();
-      setScores(data);
+      setUsers(data);
     } catch (error) {
-      console.error('Fehler beim Laden des Leaderboards:', error);
+      console.error('Fehler beim Laden der Spieler:', error);
     }
   };
 
-  const handleStartGame = (name: string) => {
-    if (name.trim()) {
-      setPlayerName(name);
+  const fetchPointsConfig = async () => {
+    try {
+      const response = await fetch('/api/admin/points');
+      const data = await response.json();
+      setPointsConfig(data);
+    } catch (error) {
+      console.error('Fehler beim Laden der Punkte-Config:', error);
+    }
+  };
+
+  const handleAuth = async (username: string, password: string, email?: string) => {
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: isLoginMode ? 'login' : 'register',
+          username,
+          password,
+          email,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error);
+      }
+
+      const user = await response.json();
+      setCurrentUser(user);
       setGameStarted(true);
-      setPlayerScore(0);
       setCurrentGameIndex(0);
+      fetchUsers();
+    } catch (error) {
+      throw error;
     }
   };
 
   const handleCorrectAnswer = async () => {
-    const newScore = playerScore + 10;
-    setPlayerScore(newScore);
+    if (!currentUser) return;
 
-    if (currentGameIndex < games.length - 1) {
-      setCurrentGameIndex(currentGameIndex + 1);
-    } else {
-      // Game finished
-      await submitScore(newScore);
+    const game = games[currentGameIndex];
+    if (!game) return;
+
+    // Überprüfe ob Rätsel bereits gelöst
+    if (currentUser.completedGames.includes(game.id)) {
+      alert('Dieses Rätsel hast du bereits gelöst!');
+      if (currentGameIndex < games.length - 1) {
+        setCurrentGameIndex(currentGameIndex + 1);
+      }
+      return;
     }
-  };
 
-  const submitScore = async (finalScore: number) => {
+    const points = pointsConfig[game.difficulty];
+
     try {
-      await fetch('/api/scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerName,
-          score: finalScore,
-          completedGames: games.length,
-        }),
-      });
-      fetchLeaderboard();
-      setGameStarted(false);
+      // Speichere completed game
+      const updatedUser = {
+        ...currentUser,
+        completedGames: [...currentUser.completedGames, game.id],
+        score: currentUser.score + points,
+      };
+
+      setCurrentUser(updatedUser);
+
+      if (currentGameIndex < games.length - 1) {
+        setCurrentGameIndex(currentGameIndex + 1);
+      } else {
+        // Spiel vorbei
+        alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${updatedUser.score}`);
+        setGameStarted(false);
+        fetchUsers();
+      }
     } catch (error) {
-      console.error('Fehler beim Speichern des Scores:', error);
+      console.error('Fehler beim Speichern:', error);
     }
   };
 
@@ -98,9 +147,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl font-bold text-primary mb-4">
-            4 Bilder 1 Wort
-          </div>
+          <div className="text-4xl font-bold text-primary mb-4">4 Bilder 1 Wort</div>
           <div className="text-black">Wird geladen...</div>
         </div>
       </div>
@@ -111,12 +158,8 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl font-bold text-primary mb-4">
-            4 Bilder 1 Wort
-          </div>
-          <div className="text-black mb-4">
-            Noch keine Rätsel vorhanden. Bitte füge Rätsel hinzu!
-          </div>
+          <div className="text-4xl font-bold text-primary mb-4">4 Bilder 1 Wort</div>
+          <div className="text-black mb-4">Noch keine Rätsel vorhanden!</div>
           <Link
             href="/admin"
             className="inline-block px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
@@ -128,50 +171,33 @@ export default function Home() {
     );
   }
 
-  if (!gameStarted) {
+  if (!currentUser) {
     return (
       <div className="min-h-screen bg-white p-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12 pt-8">
-            <h1 className="text-5xl font-bold text-primary mb-2">
-              🎮 4 Bilder 1 Wort
-            </h1>
-            <p className="text-black text-lg">
-              Erkenne das Wort anhand der 4 Bilder!
-            </p>
+            <h1 className="text-5xl font-bold text-primary mb-2">🎮 4 Bilder 1 Wort</h1>
+            <p className="text-black text-lg">Erkenne das Wort anhand der 4 Bilder!</p>
           </div>
 
-          {/* Start Form */}
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-8 border-4 border-primary max-w-md mx-auto">
-            <h2 className="text-2xl font-bold text-primary mb-4">
-              Spieler Name
-            </h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleStartGame(playerName);
-              }}
-            >
-              <input
-                type="text"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Gib deinen Namen ein"
-                className="w-full px-4 py-3 border-2 border-primary rounded-lg text-black placeholder-gray-500 focus:outline-none focus:border-primary-dark mb-4"
-                autoFocus
-              />
-              <button
-                type="submit"
-                className="w-full px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition text-lg"
-              >
-                Spiel starten
-              </button>
-            </form>
-          </div>
+          {/* Auth Form */}
+          <AuthForm
+            isLogin={isLoginMode}
+            onToggle={() => setIsLoginMode(!isLoginMode)}
+            onSubmit={handleAuth}
+          />
 
           {/* Leaderboard */}
-          <Leaderboard scores={scores} />
+          <div className="mt-12">
+            <Leaderboard
+              scores={users.map((u) => ({
+                playerName: u.username,
+                score: u.score,
+                completedGames: u.completedGames.length,
+              }))}
+            />
+          </div>
 
           {/* Admin Link */}
           <div className="text-center mt-8">
@@ -187,16 +213,17 @@ export default function Home() {
     );
   }
 
+  // Spiel läuft
   return (
     <div className="min-h-screen bg-white p-4 flex flex-col items-center justify-center">
       {/* Game Header */}
       <div className="w-full max-w-2xl mb-6">
         <div className="flex justify-between items-center bg-primary p-4 rounded-lg">
           <div className="text-white font-bold">
-            Spieler: <span className="text-xl">{playerName}</span>
+            Spieler: <span className="text-xl">{currentUser.username}</span>
           </div>
           <div className="text-white font-bold">
-            Punkte: <span className="text-xl">{playerScore}</span>
+            Punkte: <span className="text-xl">{currentUser.score}</span>
           </div>
           <div className="text-white font-bold">
             Rätsel: <span className="text-xl">{currentGameIndex + 1}/{games.length}</span>
@@ -223,20 +250,19 @@ export default function Home() {
         />
       )}
 
-      {/* End of Game Message */}
-      {currentGameIndex === games.length - 1 && playerScore > 0 && (
-        <div className="mt-8 text-center">
-          <button
-            onClick={() => {
-              setGameStarted(false);
-              fetchLeaderboard();
-            }}
-            className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
-          >
-            Spiel beendet - Zurück zum Menü
-          </button>
-        </div>
-      )}
+      {/* End Game Button */}
+      <div className="mt-8">
+        <button
+          onClick={() => {
+            setGameStarted(false);
+            setCurrentUser(null);
+            fetchUsers();
+          }}
+          className="px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition"
+        >
+          Spiel beendet
+        </button>
+      </div>
     </div>
   );
 }
