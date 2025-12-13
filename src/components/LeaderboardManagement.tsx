@@ -15,7 +15,7 @@ interface LeaderboardManagementProps {
 
 export default function LeaderboardManagement({ users, onRefresh }: LeaderboardManagementProps) {
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   const handleDeleteUser = async (id: string) => {
     if (!confirm('Spieler wirklich löschen?')) return;
