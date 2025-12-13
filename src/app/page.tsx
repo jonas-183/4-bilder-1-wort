@@ -26,7 +26,6 @@ export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
-  const [gameStarted, setGameStarted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [pointsConfig, setPointsConfig] = useState({ easy: 10, medium: 25, hard: 50 });
@@ -89,7 +88,6 @@ export default function Home() {
 
       const user = await response.json();
       setCurrentUser(user);
-      setGameStarted(true);
       setCurrentGameIndex(0);
       fetchUsers();
     } catch (error) {
@@ -129,7 +127,7 @@ export default function Home() {
       } else {
         // Spiel vorbei
         alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${updatedUser.score}`);
-        setGameStarted(false);
+        setCurrentUser(null);
         fetchUsers();
       }
     } catch (error) {
@@ -248,7 +246,6 @@ export default function Home() {
       <div className="mt-8">
         <button
           onClick={() => {
-            setGameStarted(false);
             setCurrentUser(null);
             fetchUsers();
           }}
