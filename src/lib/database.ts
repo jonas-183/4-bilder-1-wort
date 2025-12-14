@@ -42,9 +42,93 @@ const gameDatabase: GameData[] = [
       '/images/Dorothee_Winkler1.png',
       '/images/Dorothee_Winkler2.png',
       '/images/Dorothee_Winkler3.png',
-      '/images/Dorothee_Winkler3.png',
+      '/images/Dorothee_Winkler4.png',
     ],
     answer: 'Dorothee Winkler',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+    { 
+    id: '2', // hier anpassen ########
+    images: [
+      '/images/Greta_Garkisch1.png',
+      '/images/Greta_Garkisch2.jpg',
+      '/images/Greta_Garkisch3.png',
+      '/images/Greta_Garkisch4.png',
+    ],
+    answer: 'Greta Garkisch',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+    { 
+    id: '3', // hier anpassen ########
+    images: [
+      '/images/Jakob_Wohlhüter1.png',
+      '/images/Jakob_Wohlhüter2.png',
+      '/images/Jakob_Wohlhüter3.jpg',
+      '/images/Jakob_Wohlhüter4.png',
+    ],
+    answer: 'Jakob Wohlhüter',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+    { 
+    id: '4', // hier anpassen ########
+    images: [
+      '/images/Sophia_Schmid1.jpg',
+      '/images/Sophia_Schmid2.jpg',
+      '/images/Sophia_Schmid3.jpg',
+      '/images/Sophia_Schmid4.png',
+    ],
+    answer: 'Sophia Schmid',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+      { 
+    id: '5', // hier anpassen ########
+    images: [
+      '/images/Vincent_Delitz1.jpeg',
+      '/images/Vincent_Delitz2.jpg',
+      '/images/Vincent_Delitz3.jpg',
+      '/images/Vincent_Delitz4.png',
+    ],
+    answer: 'Vincent Delitz',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+        { 
+    id: '6', // hier anpassen ########
+    images: [
+      '/images/Jakob_Albert1.png',
+      '/images/Jakob_Albert2.avif',
+      '/images/Jakob_Albert3.jpeg',
+      '/images/Jakob_Albert4.png',
+    ],
+    answer: 'Jakob Albert',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+          { 
+    id: '7', // hier anpassen ########
+    images: [
+      '/images/Tim_Schneider1.jpg',
+      '/images/Tim_Schneider2.jpeg',
+      '/images/Tim_Schneider3.png',
+      '/images/Tim_Schneider4.jpg',
+    ],
+    answer: 'Tim Schneider',
+    difficulty: 'easy',
+    category: 'Alumni',
+  },
+            { 
+    id: '7', // hier anpassen ########
+    images: [
+      '/images/Tom_Biermann1.jpeg',
+      '/images/Tom_Biermann2.jpeg',
+      '/images/Tom_Biermann3.png',
+      '/images/Tom_Biermann4.jpeg',
+    ],
+    answer: 'Tom Biermann',
     difficulty: 'easy',
     category: 'Alumni',
   },
