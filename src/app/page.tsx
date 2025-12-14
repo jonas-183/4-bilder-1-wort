@@ -22,6 +22,7 @@ export default function Home() {
   const [playerScore, setPlayerScore] = useState(0);
   const [localCompleted, setLocalCompleted] = useState<string[]>([]);
   const [currentGameIndex, setCurrentGameIndex] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(3);
   const [loading, setLoading] = useState(true);
   const [pointsConfig, setPointsConfig] = useState({ easy: 10, medium: 25, hard: 50 });
 
@@ -35,7 +36,11 @@ export default function Home() {
     try {
       const response = await fetch('/api/games');
       const data = await response.json();
-      setGames(data);
+      // ensure stable ordering by numeric id
+      const sorted = Array.isArray(data)
+        ? data.sort((a: any, b: any) => (Number(a.id) || 0) - (Number(b.id) || 0))
+        : data;
+      setGames(sorted);
       setLoading(false);
     } catch (error) {
       console.error('Fehler beim Laden der Spiele:', error);
@@ -72,6 +77,7 @@ export default function Home() {
     setPlayerName(trimmed);
     setPlayerStarted(true);
     setCurrentGameIndex(0);
+    setAttemptsLeft(3);
     setPlayerScore(0);
     // load completed from localStorage by name
     try {
@@ -84,49 +90,77 @@ export default function Home() {
     }
   };
 
-  const handleCorrectAnswer = async () => {
+  const handleAnswerResult = async (isCorrect: boolean) => {
     if (!playerStarted) return;
 
-    const unplayedGames = games.filter((g) => !localCompleted.includes(g.id));
-    const game = unplayedGames[currentGameIndex];
+    const unplayedBefore = games.filter((g) => !localCompleted.includes(g.id));
+    const game = unplayedBefore[currentGameIndex];
     if (!game) return;
 
     const difficulty: 'easy' | 'medium' | 'hard' = (game as any).difficulty || 'easy';
     const points = pointsConfig[difficulty];
 
     try {
-      const updatedDone = [...localCompleted, game.id];
-      setLocalCompleted(updatedDone);
-      // persist locally
-      try {
-        const key = `completed_${playerName}`;
-        localStorage.setItem(key, JSON.stringify(updatedDone));
-      } catch (e) {
-        console.error('LocalStorage error:', e);
-      }
+      if (isCorrect) {
+        const updatedDone = [...localCompleted, game.id];
+        setLocalCompleted(updatedDone);
+        try {
+          const key = `completed_${playerName}`;
+          localStorage.setItem(key, JSON.stringify(updatedDone));
+        } catch (e) {
+          console.error('LocalStorage error:', e);
+        }
 
-      // update local score and leaderboard
-      setPlayerScore((s) => s + points);
-      try {
-        await fetch('/api/scores', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ playerName, score: points, completedGames: 1 }),
-        });
-        // refresh leaderboard
-        fetchLeaderboard();
-      } catch (e) {
-        console.error('Fehler beim Aktualisieren des Leaderboards:', e);
-      }
+        setPlayerScore((s) => s + points);
+        try {
+          await fetch('/api/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerName, score: points, completedGames: 1, gameId: game.id }),
+          });
+          fetchLeaderboard();
+        } catch (e) {
+          console.error('Fehler beim Aktualisieren des Leaderboards:', e);
+        }
 
-      if (currentGameIndex < unplayedGames.length - 1) {
-        setCurrentGameIndex(currentGameIndex + 1);
+        // move to next puzzle safely
+        const newUnplayed = games.filter((g) => !updatedDone.includes(g.id));
+        if (newUnplayed.length === 0) {
+          alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${playerScore + points}`);
+          setPlayerStarted(false);
+          return;
+        }
+        const nextIndex = Math.min(currentGameIndex, Math.max(0, newUnplayed.length - 1));
+        setCurrentGameIndex(nextIndex);
+        setAttemptsLeft(3);
       } else {
-        alert(`🎉 Glückwunsch! Du hast alle Rätsel gelöst! Punkte: ${playerScore + points}`);
-        setPlayerStarted(false);
+        // wrong answer -> decrement attempts
+        if (attemptsLeft - 1 <= 0) {
+          // mark as failed/completed so player cannot retry
+          const updatedDone = [...localCompleted, game.id];
+          setLocalCompleted(updatedDone);
+          try {
+            const key = `completed_${playerName}`;
+            localStorage.setItem(key, JSON.stringify(updatedDone));
+          } catch (e) {
+            console.error('LocalStorage error:', e);
+          }
+
+          const newUnplayed = games.filter((g) => !updatedDone.includes(g.id));
+          if (newUnplayed.length === 0) {
+            alert(`🎮 Ende! Du hast alle Rätsel durchgespielt. Punkte: ${playerScore}`);
+            setPlayerStarted(false);
+            return;
+          }
+          const nextIndex = Math.min(currentGameIndex, Math.max(0, newUnplayed.length - 1));
+          setCurrentGameIndex(nextIndex);
+          setAttemptsLeft(3);
+        } else {
+          setAttemptsLeft((a) => a - 1);
+        }
       }
     } catch (error) {
-      console.error('Fehler beim Speichern:', error);
+      console.error('Fehler beim Verarbeiten der Antwort:', error);
     }
   };
 
@@ -182,6 +216,7 @@ export default function Home() {
                 className="w-full px-4 py-3 border-2 border-primary rounded-lg text-black placeholder-gray-500 focus:outline-none focus:border-primary-dark mb-4"
                 autoFocus
               />
+              <div className="text-sm text-gray-600 mb-4">Hinweis: Bitte Namen im Format "Max Mustermann" eingeben (Groß-/Kleinschreibung beachten).</div>
               <button type="submit" className="w-full px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition text-lg">
                 Spiel starten
               </button>
@@ -206,7 +241,8 @@ export default function Home() {
 
   // Spiel läuft
   const unplayedGames = games.filter((g) => !localCompleted.includes(g.id));
-  const currentGame = unplayedGames[currentGameIndex];
+  const safeIndex = Math.min(currentGameIndex, Math.max(0, unplayedGames.length - 1));
+  const currentGame = unplayedGames[safeIndex];
 
   if (unplayedGames.length === 0) {
     return (
@@ -241,7 +277,7 @@ export default function Home() {
             Punkte: <span className="text-xl">{playerScore}</span>
           </div>
           <div className="text-white font-bold">
-            Rätsel: <span className="text-xl">{currentGameIndex + 1}/{unplayedGames.length}</span>
+            Rätsel: <span className="text-xl">{safeIndex + 1}/{unplayedGames.length}</span>
           </div>
         </div>
 
@@ -253,7 +289,12 @@ export default function Home() {
 
       {/* Game Grid */}
       {currentGame && (
-        <GameImageGrid images={currentGame.images} answer={currentGame.answer} onAnswerSubmit={handleCorrectAnswer} />
+        <GameImageGrid
+          images={currentGame.images}
+          answer={currentGame.answer}
+          attemptsLeft={attemptsLeft}
+          onAnswerSubmit={handleAnswerResult}
+        />
       )}
 
       {/* End Game Button */}

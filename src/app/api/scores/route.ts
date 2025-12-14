@@ -17,7 +17,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { playerName, score, completedGames } = body;
+    const { playerName, score, completedGames, gameId } = body;
 
     if (!playerName || score === undefined || completedGames === undefined) {
       return NextResponse.json(
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await updateScore(playerName, score, completedGames);
+    const result = await updateScore(playerName, score, completedGames, gameId);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error('Error posting score:', error);

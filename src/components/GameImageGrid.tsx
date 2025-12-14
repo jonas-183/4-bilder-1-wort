@@ -4,8 +4,9 @@ import Image from 'next/image';
 interface GameImageGridProps {
   images: string[];
   answer: string;
-  onAnswerSubmit: (answer: string) => void;
+  onAnswerSubmit: (isCorrect: boolean) => void; // reports whether the submitted answer was correct
   disabled?: boolean;
+  attemptsLeft?: number;
 }
 
 export default function GameImageGrid({
@@ -13,6 +14,7 @@ export default function GameImageGrid({
   answer,
   onAnswerSubmit,
   disabled = false,
+  attemptsLeft = 3,
 }: GameImageGridProps) {
   const [inputValue, setInputValue] = useState('');
   const [message, setMessage] = useState('');
@@ -23,12 +25,13 @@ export default function GameImageGrid({
 
     if (userAnswer === answer.toLowerCase()) {
       setMessage('✓ Richtig!');
-      onAnswerSubmit(answer);
       setInputValue('');
-      setTimeout(() => setMessage(''), 2000);
+      onAnswerSubmit(true);
+      setTimeout(() => setMessage(''), 1500);
     } else {
       setMessage('✗ Falsch, versuchen Sie es nochmal!');
-      setTimeout(() => setMessage(''), 2000);
+      onAnswerSubmit(false);
+      setTimeout(() => setMessage(''), 1500);
     }
   };
 
@@ -78,6 +81,7 @@ export default function GameImageGrid({
             Absenden
           </button>
         </div>
+        <div className="mt-3 text-center text-sm text-gray-600">Versuche übrig: {attemptsLeft}</div>
         {message && (
           <div
             className={`mt-3 p-2 rounded text-center font-bold ${
