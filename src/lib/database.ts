@@ -39,14 +39,14 @@ const gameDatabase: GameData[] = [
   { 
     id: '1', // hier anpassen ########
     images: [
-      'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300',
-      'https://images.unsplash.com/photo-1552058544-f03b3d6e-custom?w=300',
-      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300',
-      'https://images.unsplash.com/photo-1516979187457-635ffe35ff91?w=300',
+      '/images/Dorothee_Winkler1.png',
+      '/images/Dorothee_Winkler2.png',
+      '/images/Dorothee_Winkler3.png',
+      '/images/Dorothee_Winkler3.png',
     ],
-    answer: 'tim',
+    answer: 'Dorothee Winkler',
     difficulty: 'easy',
-    category: 'Tiere',
+    category: 'Alumni',
   },
 ];
 
