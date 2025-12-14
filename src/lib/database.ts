@@ -198,15 +198,6 @@ export async function addScore(
   completedGames: number,
   gameId?: string
 ): Promise<Score> {
-  const newScore: Score = {
-    id: Date.now().toString(),
-    playerName,
-    score,
-    completedGames,
-    lastPlayed: new Date().toISOString(),
-    timestamp: Date.now(),
-    completedGameIds: gameId ? [gameId] : [],
-  };
   if (supabaseAdmin) {
     const payload: any = {
       player_name: playerName,
