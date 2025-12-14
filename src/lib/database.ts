@@ -42,7 +42,7 @@ const gameDatabase: GameData[] = [
       '/images/Dorothee_Winkler1.png',
       '/images/Dorothee_Winkler2.png',
       '/images/Dorothee_Winkler3.png',
-      '/images/Dorothee_Winkler4.png',
+      '/images/Dorothee_Winkler4.jpg',
     ],
     answer: 'Dorothee Winkler',
     difficulty: 'easy',
@@ -88,8 +88,8 @@ const gameDatabase: GameData[] = [
     id: '5', // hier anpassen ########
     images: [
       '/images/Vincent_Delitz1.jpeg',
-      '/images/Vincent_Delitz2.jpg',
-      '/images/Vincent_Delitz3.jpg',
+      '/images/Vincent_Delitz2.png',
+      '/images/Vincent_Delitz3.png',
       '/images/Vincent_Delitz4.png',
     ],
     answer: 'Vincent Delitz',
