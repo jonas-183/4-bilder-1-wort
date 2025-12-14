@@ -34,6 +34,8 @@ export interface PointsConfig {
   hard: number;
 }
 
+import { supabaseAdmin } from './supabaseServer';
+
 // Mock data - Replace with database calls in production
 const gameDatabase: GameData[] = [
   { 
@@ -162,7 +164,31 @@ export async function addGameData(game: Omit<GameData, 'id'>): Promise<GameData>
 }
 
 export async function getLeaderboard(): Promise<Score[]> {
-  // return a sorted copy to avoid mutating the in-memory array repeatedly
+  if (supabaseAdmin) {
+    const { data, error } = await supabaseAdmin
+      .from('scores')
+      .select('id, player_name, score, completed_games, completed_game_ids, last_played')
+      .order('score', { ascending: false })
+      .limit(50);
+    if (error) {
+      console.error('Supabase getLeaderboard error:', error);
+      // fallback to in-memory
+      return [...scoreDatabase].sort((a, b) => b.score - a.score).slice(0, 50);
+    }
+    return (
+      (data || []) as any[]
+    ).map((r) => ({
+      id: r.id,
+      playerName: r.player_name,
+      score: r.score,
+      completedGames: r.completed_games,
+      lastPlayed: r.last_played,
+      timestamp: r.last_played ? new Date(r.last_played).getTime() : Date.now(),
+      completedGameIds: r.completed_game_ids || [],
+    }));
+  }
+
+  // fallback: return a sorted copy to avoid mutating the in-memory array repeatedly
   return [...scoreDatabase].sort((a, b) => b.score - a.score).slice(0, 50);
 }
 
@@ -172,6 +198,42 @@ export async function addScore(
   completedGames: number,
   gameId?: string
 ): Promise<Score> {
+  const newScore: Score = {
+    id: Date.now().toString(),
+    playerName,
+    score,
+    completedGames,
+    lastPlayed: new Date().toISOString(),
+    timestamp: Date.now(),
+    completedGameIds: gameId ? [gameId] : [],
+  };
+  if (supabaseAdmin) {
+    const payload: any = {
+      player_name: playerName,
+      score,
+      completed_games: completedGames,
+      completed_game_ids: gameId ? [gameId] : [],
+      last_played: new Date().toISOString(),
+    };
+    const { data, error } = await supabaseAdmin.from('scores').insert(payload).select().single();
+    if (error) {
+      console.error('Supabase addScore error:', error);
+      // fallback to in-memory
+    } else if (data) {
+      return {
+        id: data.id,
+        playerName: data.player_name,
+        score: data.score,
+        completedGames: data.completed_games,
+        lastPlayed: data.last_played,
+        timestamp: data.last_played ? new Date(data.last_played).getTime() : Date.now(),
+        completedGameIds: data.completed_game_ids || [],
+      } as Score;
+    }
+
+    // if supabase failed, fall through to in-memory
+  }
+
   const newScore: Score = {
     id: Date.now().toString(),
     playerName,
@@ -191,6 +253,64 @@ export async function updateScore(
   completedGames: number,
   gameId?: string
 ): Promise<Score> {
+  if (supabaseAdmin) {
+    // try to fetch existing row
+    const { data: existingData, error: getErr } = await supabaseAdmin
+      .from('scores')
+      .select('*')
+      .eq('player_name', playerName)
+      .maybeSingle();
+    if (getErr) {
+      console.error('Supabase updateScore fetch error:', getErr);
+      // fallback to in-memory
+    } else if (existingData) {
+      const completedIds: string[] = existingData.completed_game_ids || [];
+      if (gameId && completedIds.includes(gameId)) {
+        // already counted
+        await supabaseAdmin
+          .from('scores')
+          .update({ last_played: new Date().toISOString() })
+          .eq('player_name', playerName);
+        return {
+          id: existingData.id,
+          playerName: existingData.player_name,
+          score: existingData.score,
+          completedGames: existingData.completed_games,
+          lastPlayed: existingData.last_played,
+          timestamp: existingData.last_played ? new Date(existingData.last_played).getTime() : Date.now(),
+          completedGameIds: existingData.completed_game_ids || [],
+        } as Score;
+      }
+
+      const newIds = gameId ? Array.from(new Set([...(completedIds || []), gameId])) : completedIds;
+      const { data: updated, error: updErr } = await supabaseAdmin
+        .from('scores')
+        .update({
+          score: existingData.score + score,
+          completed_games: existingData.completed_games + completedGames,
+          completed_game_ids: newIds,
+          last_played: new Date().toISOString(),
+        })
+        .eq('player_name', playerName)
+        .select()
+        .single();
+      if (updErr) {
+        console.error('Supabase updateScore update error:', updErr);
+      } else if (updated) {
+        return {
+          id: updated.id,
+          playerName: updated.player_name,
+          score: updated.score,
+          completedGames: updated.completed_games,
+          lastPlayed: updated.last_played,
+          timestamp: updated.last_played ? new Date(updated.last_played).getTime() : Date.now(),
+          completedGameIds: updated.completed_game_ids || [],
+        } as Score;
+      }
+    }
+    // fallback to in-memory if supabase not available / errors
+  }
+
   const existingScore = scoreDatabase.find((s) => s.playerName === playerName);
   if (existingScore) {
     // prevent double-counting the same game
