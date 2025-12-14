@@ -82,6 +82,7 @@ export default function GameImageGrid({
           </button>
         </div>
         <div className="mt-3 text-center text-sm text-gray-600">Versuche übrig: {attemptsLeft}</div>
+        <div className="mt-2 text-center text-xs text-gray-500 italic">Hinweis: Gib deinen Namen im Format &quot;Max Mustermann&quot; ein (Groß-/Kleinschreibung beachten).</div>
         {message && (
           <div
             className={`mt-3 p-2 rounded text-center font-bold ${

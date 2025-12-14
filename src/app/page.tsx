@@ -216,7 +216,7 @@ export default function Home() {
                 className="w-full px-4 py-3 border-2 border-primary rounded-lg text-black placeholder-gray-500 focus:outline-none focus:border-primary-dark mb-4"
                 autoFocus
               />
-              <div className="text-sm text-gray-600 mb-4">Hinweis: Bitte Namen im Format &quot;Max Mustermann&quot; eingeben (Groß-/Kleinschreibung beachten).</div>
+              
               <button type="submit" className="w-full px-6 py-3 bg-primary hover:bg-primary-dark text-white font-bold rounded-lg transition text-lg">
                 Spiel starten
               </button>
