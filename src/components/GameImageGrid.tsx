@@ -42,16 +42,16 @@ export default function GameImageGrid({
         {images.map((img, index) => (
           <div
             key={index}
-            className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-200"
+            className="relative w-full aspect-square rounded-lg overflow-hidden bg-gray-100 p-2 flex items-center justify-center"
           >
             <Image
               src={img}
               alt={`Bild ${index + 1}`}
               fill
-              className="object-cover"
+              className="object-contain"
               onError={(e) => {
-                const img = e.currentTarget as HTMLImageElement;
-                img.src = `https://via.placeholder.com/300?text=Bild+${index + 1}`;
+                const imgEl = e.currentTarget as HTMLImageElement;
+                imgEl.src = `https://via.placeholder.com/300?text=Bild+${index + 1}`;
               }}
             />
           </div>

@@ -195,8 +195,8 @@ export default function Home() {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12 pt-8">
-            <h1 className="text-5xl font-bold text-primary mb-2">🎮 4 Bilder 1 Wort</h1>
-            <p className="text-black text-lg">Erkenne das Wort anhand der 4 Bilder!</p>
+            <h1 className="text-5xl font-bold text-primary mb-2">🎓 Alumni — 4 Bilder 1 Wort</h1>
+            <p className="text-black text-lg">Errate aktuelle Alumni anhand von 4 Bildern!</p>
           </div>
 
           {/* Simple name input */}
